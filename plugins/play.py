@@ -84,12 +84,20 @@ async def play_command(client, message: Message):
 >
 > ❖ ᴘᴏᴡᴇʀᴇᴅ» | 𝐋ᴇᴛ𝐌ᴇ 𝐒ᴏʟᴏ 𝐇ᴇʀ🥀 | ❞"""
         
-        await status_msg.delete()
-        player_msg = await message.reply_photo(
-            photo=song["thumbnail"],
-            caption=caption,
-            reply_markup=get_player_markup(chat_id)
-        )
+        try:
+            player_msg = await message.reply_photo(
+                photo=song["thumbnail"],
+                caption=caption,
+                reply_markup=get_player_markup(chat_id)
+            )
+            await status_msg.delete()
+        except Exception as e:
+            print(f"Failed to send photo, sending text instead: {e}")
+            player_msg = await message.reply_text(
+                text=caption,
+                reply_markup=get_player_markup(chat_id)
+            )
+            await status_msg.delete()
         
         if chat_id in updater_tasks:
             updater_tasks[chat_id].cancel()
