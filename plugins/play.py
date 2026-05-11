@@ -72,17 +72,17 @@ async def play_command(client, message: Message):
         if not downloaded:
             return await status_msg.edit("❌ **Failed to download song.**")
             
-        pcm_path = file_path.replace(".mp3", ".pcm")
+        wav_path = file_path.replace(".mp3", ".wav")
         try:
             import subprocess
             process = subprocess.run(
-                ["ffmpeg", "-i", file_path, "-f", "s16le", "-ac", "2", "-ar", "48000", pcm_path, "-y"],
+                ["ffmpeg", "-i", file_path, "-ar", "48000", "-ac", "2", wav_path, "-y"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )
             if process.returncode == 0:
                 os.remove(file_path)
-                file_path = pcm_path
+                file_path = wav_path
             else:
                 print(f"FFmpeg failed: {process.stderr.decode()}")
         except Exception as e:
