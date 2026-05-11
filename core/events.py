@@ -45,6 +45,20 @@ async def stream_ended(client, update: Update):
             if not downloaded:
                 raise Exception("Failed to download song")
                 
+            pcm_path = file_path.replace(".mp3", ".pcm")
+            try:
+                import subprocess
+                process = subprocess.run(
+                    ["ffmpeg", "-i", file_path, "-f", "s16le", "-ac", "2", "-ar", "48000", pcm_path, "-y"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                if process.returncode == 0:
+                    os.remove(file_path)
+                    file_path = pcm_path
+            except Exception:
+                pass
+                
             await call_py.play(chat_id, MediaStream(file_path))
             
             bar = create_progress_bar(0, next_song["duration"])
