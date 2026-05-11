@@ -1,0 +1,6 @@
+pyrogram>=2.0.106
+py-tgcalls
+aiohttp
+nest_asyncio
+tgcrypto
+python-dotenv

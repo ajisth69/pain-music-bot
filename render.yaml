@@ -1,0 +1,23 @@
+services:
+  - type: worker
+    name: PainMusicBot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: SESSION_STRING
+        sync: false
+      - key: OWNER_ID
+        sync: false
+      - key: LOGGER_ID
+        sync: false
+      - key: BOT_USERNAME
+        sync: false
+      - key: OWNER_USERNAME
+        sync: false
