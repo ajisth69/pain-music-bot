@@ -9,6 +9,8 @@ from utils.formatters import create_progress_bar
 from utils.ui import get_player_markup
 from utils.updater import progress_updater
 from config import OWNER_USERNAME
+import os
+from utils.jiosaavn import download_file
 
 @Client.on_message(filters.command(["pause"]))
 async def pause_cmd(client, message: Message):
@@ -62,7 +64,29 @@ async def skip_cmd(client, message: Message):
         
     next_song = get_next(chat_id)
     if next_song:
-        await call_py.play(chat_id, MediaStream(next_song["audio_url"]))
+        file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
+        os.makedirs("downloads", exist_ok=True)
+        
+        downloaded = await download_file(next_song["audio_url"], file_path)
+        if not downloaded:
+            return await message.reply("❌ **Failed to download next song.**")
+            
+        wav_path = file_path.replace(".mp3", ".wav")
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "ffmpeg", "-i", file_path, "-ar", "48000", "-ac", "2", wav_path, "-y",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await process.communicate()
+            if process.returncode == 0:
+                os.remove(file_path)
+                file_path = wav_path
+        except Exception:
+            pass
+            
+        await call_py.play(chat_id, MediaStream(file_path))
+        
         if chat_id in updater_tasks:
             updater_tasks[chat_id].cancel()
             
@@ -92,7 +116,8 @@ async def skip_cmd(client, message: Message):
             "requester": next_song.get("requester", message.from_user.mention),
             "paused": False,
             "audio_url": next_song["audio_url"],
-            "thumbnail": next_song["thumbnail"]
+            "thumbnail": next_song["thumbnail"],
+            "file_path": file_path
         }
         updater_tasks[chat_id] = asyncio.create_task(progress_updater(chat_id, player_msg))
         await message.reply(f"> ▣ **𝐒ᴋɪᴘᴘᴇᴅ 𝐁ʏ :** {message.from_user.mention} ❞", reply_markup=get_player_markup(chat_id))

@@ -65,13 +65,20 @@ async def stream_ended(client, update: Update):
             bar = create_progress_bar(0, next_song["duration"])
             caption = f"🎵 **Playing:** {next_song['title']}\n\n{bar}"
             
-            from core.clients import bot
-            player_msg = await bot.send_photo(
-                chat_id,
-                photo=next_song["thumbnail"],
-                caption=caption,
-                reply_markup=get_player_markup(chat_id)
-            )
+            try:
+                player_msg = await bot.send_photo(
+                    chat_id,
+                    photo=next_song["thumbnail"],
+                    caption=caption,
+                    reply_markup=get_player_markup(chat_id)
+                )
+            except Exception as e:
+                print(f"Failed to send photo in queue, sending text: {e}")
+                player_msg = await bot.send_message(
+                    chat_id,
+                    text=caption,
+                    reply_markup=get_player_markup(chat_id)
+                )
             
             playing_chats[chat_id] = {
                 "message": player_msg,

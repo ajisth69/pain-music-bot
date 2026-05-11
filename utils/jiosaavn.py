@@ -114,8 +114,11 @@ async def download_file(url, file_path):
         async with session.get(url) as resp:
             if resp.status == 200:
                 data = await resp.read()
-                with open(file_path, 'wb') as f:
-                    f.write(data)
+                def write_file():
+                    with open(file_path, 'wb') as f:
+                        f.write(data)
+                import asyncio
+                await asyncio.to_thread(write_file)
                 return True
     return False
 
