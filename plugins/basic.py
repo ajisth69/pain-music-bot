@@ -59,5 +59,7 @@ async def reload_cmd(client, message: Message):
     
     await message.reply_photo(IMG_RELOAD, caption="🔄 **Reloading modules and rebooting the engine...**\n*(This takes ~3 seconds)*")
     
-    # Restarts the script
-    os.execl(sys.executable, sys.executable, *sys.argv)
+    # Restarts the script safely across Windows and Linux
+    import subprocess
+    subprocess.Popen([sys.executable] + sys.argv)
+    sys.exit(0)
