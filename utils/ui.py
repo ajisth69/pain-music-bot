@@ -13,6 +13,6 @@ def get_player_markup(chat_id):
         ],
         [
             InlineKeyboardButton("✧ ᴄʟᴏsᴇ ✧", callback_data=f"stop_{chat_id}"),
-            InlineKeyboardButton("Launch Mini app", web_app=WebAppInfo(url="https://clashmusic.vercel.app"))
+            InlineKeyboardButton("Launch Mini app", url="https://clashmusic.vercel.app")
         ]
     ])
