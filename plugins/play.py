@@ -9,13 +9,21 @@ from core.player import call_py
 from pytgcalls.types import MediaStream
 from utils.jiosaavn import fetch_song, fetch_artist_songs, download_file
 from utils.queue import queued_songs, playing_chats, updater_tasks, add_to_queue, process_queue_downloads
-from utils.formatters import create_progress_bar, make_now_playing_caption, make_queued_caption, format_time
+from utils.formatters import (
+    create_progress_bar, make_now_playing_caption, make_queued_caption, format_time,
+    GLOW_LINE, THIN_LINE, FOOTER
+)
+from utils.fonts import bold_sans, bold_italic, smallcaps
 from utils.ui import get_player_markup
 from utils.updater import progress_updater
 from config import OWNER_USERNAME
 
 
 # ── Shared helpers ──────────────────────────────────────────────────────────────
+PLAY_STATUS_SEARCHING = "🔍 ✨ 💨"
+PLAY_STATUS_DOWNLOADING = "📥 💫 💎"
+PLAY_STATUS_CONVERTING = "🔄 ⚙️ 🔮"
+PLAY_STATUS_CONNECTING = "📡 🌈 🎧"
 
 async def _join_vc(client, chat_id):
     """Ensure userbot is in the group."""
@@ -81,12 +89,13 @@ async def _send_player(client_or_msg, chat_id, song, file_path, *, is_message=Tr
 async def play_command(client, message: Message):
     if len(message.command) < 2:
         return await message.reply(
-            "**⚠️  Usage:** `/play <song name>`\n"
-            "_Example:_ `/play heat waves`"
+            f"⚠️  {bold_sans('Usage:')}\n"
+            f"  `/play <song name>`\n\n"
+            f"  _Example:_ `/play heat waves`"
         )
 
     query = " ".join(message.command[1:])
-    status_msg = await message.reply("🔍  **Searching JioSaavn…**")
+    status_msg = await message.reply(PLAY_STATUS_SEARCHING)
     try:
         await message.delete()
     except Exception:
@@ -94,7 +103,7 @@ async def play_command(client, message: Message):
 
     song = await fetch_song(query)
     if not song or not song.get("audio_url"):
-        return await status_msg.edit("❌  **No results found.** Try a different name.")
+        return await status_msg.edit(f"❌  {bold_sans('No results found.')}\n  _Try a different name._")
 
     song["requester"] = message.from_user.mention
     chat_id = message.chat.id
@@ -107,8 +116,8 @@ async def play_command(client, message: Message):
             added = add_to_queue(chat_id, song)
             if not added:
                 return await status_msg.edit(
-                    "⚠️  **Queue is full!**\n"
-                    "Max 20 songs. Use /skip or /stop to clear space."
+                    f"⚠️  {bold_sans('Queue is full!')}\n"
+                    f"  Max 20 songs. Use `/skip` or `/stop` to clear space."
                 )
             process_queue_downloads(chat_id)
             position = len(queued_songs[chat_id])
@@ -121,17 +130,17 @@ async def play_command(client, message: Message):
             )
 
         # ── Nothing playing → start now ────────────────────────────────────────
-        await status_msg.edit("⬇️  **Downloading…**")
+        await status_msg.edit(PLAY_STATUS_DOWNLOADING)
         file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
         os.makedirs("downloads", exist_ok=True)
 
         if not await download_file(song["audio_url"], file_path):
-            return await status_msg.edit("❌  **Download failed.** Try again.")
+            return await status_msg.edit(f"❌  {bold_sans('Download failed.')}\n  _Try again._")
 
-        await status_msg.edit("🔄  **Converting audio…**")
+        await status_msg.edit(PLAY_STATUS_CONVERTING)
         file_path = await _convert_to_wav(file_path)
 
-        await status_msg.edit("📡  **Connecting to Voice Chat…**")
+        await status_msg.edit(PLAY_STATUS_CONNECTING)
         player_msg = await _send_player(message, chat_id, song, file_path, is_message=True)
         await status_msg.delete()
 
@@ -153,7 +162,7 @@ async def play_command(client, message: Message):
         updater_tasks[chat_id] = asyncio.create_task(progress_updater(chat_id, player_msg))
 
     except Exception as e:
-        await status_msg.edit(f"❌  **Stream failed:**\n`{e}`")
+        await status_msg.edit(f"❌  {bold_sans('Stream failed:')}\n`{e}`")
 
 
 # ── /singer ─────────────────────────────────────────────────────────────────────
@@ -162,24 +171,25 @@ async def play_command(client, message: Message):
 async def singer_command(client, message: Message):
     if len(message.command) < 2:
         return await message.reply(
-            "**⚠️  Usage:** `/singer <artist name>`\n"
-            "_Example:_ `/singer arijit singh`"
+            f"⚠️  {bold_sans('Usage:')}\n"
+            f"  `/singer <artist name>`\n\n"
+            f"  _Example:_ `/singer arijit singh`"
         )
 
     query      = " ".join(message.command[1:])
-    status_msg = await message.reply("🔍  **Looking up artist on JioSaavn…**")
+    status_msg = await message.reply(f"🔍  {bold_italic('Looking up artist...')}")
 
     songs = await fetch_artist_songs(query, limit=5)
     if not songs:
-        return await status_msg.edit("❌  **No songs found** for that artist.")
+        return await status_msg.edit(f"❌  {bold_sans('No songs found')} for that artist.")
 
     chat_id = message.chat.id
 
     try:
         await _join_vc(client, chat_id)
         await status_msg.edit(
-            f"🎤  **Found top {len(songs)} tracks** for **{query.title()}**\n"
-            f"⬇️  _Queuing them up…_"
+            f"🎤  {bold_sans(f'Found top {len(songs)} tracks')} for **{query.title()}**\n"
+            f"  ⬇️  _{bold_italic('Queuing them up...')}_"
         )
 
         for i, song in enumerate(songs):
@@ -215,10 +225,11 @@ async def singer_command(client, message: Message):
 
         process_queue_downloads(chat_id)
         await asyncio.sleep(2)
+        q_count = len(queued_songs.get(chat_id, []))
         await status_msg.edit(
-            f"✅  **{len(songs)} tracks** added for **{query.title()}**!\n"
-            f"📋  Queue: `{len(queued_songs.get(chat_id, []))}` song(s) ahead."
+            f"✅  {bold_sans(f'{len(songs)} tracks')} added for **{query.title()}**!\n"
+            f"  📋  Queue: `{q_count}` song{'s' if q_count != 1 else ''} ahead."
         )
 
     except Exception as e:
-        await status_msg.edit(f"❌  **Failed:**\n`{e}`")
+        await status_msg.edit(f"❌  {bold_sans('Failed:')}\n`{e}`")

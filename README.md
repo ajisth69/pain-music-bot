@@ -8,7 +8,7 @@ A next-generation, ultra-fast, lag-free Telegram Music Bot built with **Pyrogram
 
 - ⚡️ **Lag-Free Streaming**: Songs are pre-downloaded and converted to WAV locally before playing to eliminate network stuttering and high CPU usage.
 - 🎨 **God-Level Aesthetic UI**: Beautifully formatted messages with custom fonts and smooth progress bars.
-- 🎵 **JioSaavn Integration**: Search and stream millions of songs directly from JioSaavn.
+- 🎵 **Music Search**: Search and stream millions of songs directly into voice chat.
 - 🎛 **Full VC Controls**: Interactive buttons for Play, Pause, Skip, and Stop.
 - 🚀 **Mini App Support**: Direct link to launch a mini app interface.
 - 🔄 **Auto-Queue System**: Plays the next song automatically when the current one ends.

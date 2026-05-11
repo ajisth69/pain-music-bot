@@ -3,30 +3,35 @@ import sys
 import os
 import pytgcalls
 from pyrogram import Client, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import Message
 from config import IMG_START, IMG_HELP, IMG_PING, IMG_RELOAD, BOT_USERNAME, OWNER_USERNAME, OWNER_ID
+from utils.fonts import bold_sans, bold_italic, smallcaps, outline, mono
+from utils.formatters import GLOW_LINE, THIN_LINE, FOOTER, BRAND_LINE
+from utils.ui import get_start_markup, get_help_markup, get_owner_markup
 
 
 # ── /start ────────────────────────────────────────────────────────────────────
 
 @Client.on_message(filters.command(["start"]))
 async def start_cmd(client, message: Message):
-    buttons = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕  Add to Group", url=f"https://t.me/{BOT_USERNAME}?startgroup=true")],
-        [
-            InlineKeyboardButton("👤  Developer", url=f"https://t.me/{OWNER_USERNAME}"),
-            InlineKeyboardButton("📢  Channel",   url=f"https://t.me/letmesolo_her"),
-        ],
-    ])
+    buttons = get_start_markup(BOT_USERNAME, OWNER_USERNAME)
     text = (
-        f"🎵  **Welcome to PAIN !!**\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👋  Hey {message.from_user.mention}!\n\n"
-        f"I stream **high-quality music** straight into your group's voice chat "
-        f"via JioSaavn — no lags, no limits.\n\n"
-        f"**Get started:**  `/play <song name>`\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"✦  **PAIN !!**  ·  _LᴇᴛMᴇ Sᴏʟᴏ Hᴇʀ_ 🥀"
+        f"🎧  {bold_sans('PAIN !!')}\n"
+        f"{GLOW_LINE}\n"
+        f"\n"
+        f"  👋  Hey {message.from_user.mention}!\n"
+        f"\n"
+        f"  I stream **high-quality music** straight\n"
+        f"  into your group's voice chat\n"
+        f"  — no lags, no limits.\n"
+        f"\n"
+        f"  🎵  `/play <song name>`  to get started!\n"
+        f"  🎤  `/singer <name>`  to queue top tracks\n"
+        f"\n"
+        f"{THIN_LINE}\n"
+        f"  {smallcaps('Made for smooth streaming')}  ⚡\n"
+        f"{THIN_LINE}\n"
+        f"{FOOTER}"
     )
     await message.reply_photo(IMG_START, caption=text, reply_markup=buttons)
 
@@ -35,25 +40,27 @@ async def start_cmd(client, message: Message):
 
 @Client.on_message(filters.command(["help"]))
 async def help_cmd(client, message: Message):
-    buttons = InlineKeyboardMarkup([
-        [InlineKeyboardButton("👤  Owner / Support", url=f"https://t.me/{OWNER_USERNAME}")],
-    ])
+    buttons = get_help_markup(OWNER_USERNAME)
     text = (
-        "🛠  **PAIN !!  —  Command Reference**\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "**🎵  Playback**\n"
-        "  `/play <song>`     —  Stream a song\n"
-        "  `/singer <name>`   —  Queue top 5 songs by artist\n\n"
-        "**🎛  Controls**\n"
-        "  `/pause`   —  Pause playback\n"
-        "  `/resume`  —  Resume playback\n"
-        "  `/skip`    —  Skip to next track\n"
-        "  `/stop`    —  Stop & leave VC\n\n"
-        "**📋  Info**\n"
-        "  `/queue`   —  Show queue list\n"
-        "  `/ping`    —  System latency stats\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "✦  **PAIN !!**  ·  _LᴇᴛMᴇ Sᴏʟᴏ Hᴇʀ_ 🥀"
+        f"📖  {bold_sans('COMMAND REFERENCE')}\n"
+        f"{GLOW_LINE}\n"
+        f"\n"
+        f"  🎵  {bold_sans('Playback')}\n"
+        f"  ├  `/play <song>`  ─  Stream a song\n"
+        f"  └  `/singer <name>`  ─  Queue top 5 by artist\n"
+        f"\n"
+        f"  🎛  {bold_sans('Controls')}\n"
+        f"  ├  `/pause`  ─  Pause playback\n"
+        f"  ├  `/resume`  ─  Resume playback\n"
+        f"  ├  `/skip`  ─  Skip to next track\n"
+        f"  └  `/stop`  ─  Stop & leave VC\n"
+        f"\n"
+        f"  📋  {bold_sans('Info')}\n"
+        f"  ├  `/queue`  ─  Show queue list\n"
+        f"  └  `/ping`  ─  System latency stats\n"
+        f"\n"
+        f"{THIN_LINE}\n"
+        f"{FOOTER}"
     )
     await message.reply_photo(IMG_HELP, caption=text, reply_markup=buttons)
 
@@ -62,21 +69,19 @@ async def help_cmd(client, message: Message):
 
 @Client.on_message(filters.command(["owner"]))
 async def owner_cmd(client, message: Message):
-    buttons = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("💬  Support",  url=f"https://t.me/{OWNER_USERNAME}"),
-            InlineKeyboardButton("🐛  Report Bug", url=f"https://t.me/{OWNER_USERNAME}"),
-        ],
-        [InlineKeyboardButton("📢  Channel", url="https://t.me/letmesolo_her")],
-    ])
+    buttons = get_owner_markup(OWNER_USERNAME)
     text = (
-        "👑  **Owner Info**\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🧑‍💻  **Dev:** @{OWNER_USERNAME}\n"
-        f"🐛  **Bugs:** DM @{OWNER_USERNAME}\n"
-        f"💡  **PAIN !!** is built & maintained by _LᴇᴛMᴇ Sᴏʟᴏ Hᴇʀ_ with ❤️\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "✦  **PAIN !!**  ·  _LᴇᴛMᴇ Sᴏʟᴏ Hᴇʀ_ 🥀"
+        f"👑  {bold_sans('DEVELOPER INFO')}\n"
+        f"{GLOW_LINE}\n"
+        f"\n"
+        f"  🧑‍💻  {bold_sans('Dev')}  ─  @{OWNER_USERNAME}\n"
+        f"  🐛  {bold_sans('Bugs')}  ─  DM @{OWNER_USERNAME}\n"
+        f"\n"
+        f"  💡  {bold_sans('PAIN !!')} is built & maintained\n"
+        f"     by {smallcaps('LetMe Solo Her')} with ❤️\n"
+        f"\n"
+        f"{THIN_LINE}\n"
+        f"{FOOTER}"
     )
     await message.reply_photo(IMG_HELP, caption=text, reply_markup=buttons)
 
@@ -86,21 +91,33 @@ async def owner_cmd(client, message: Message):
 @Client.on_message(filters.command(["ping"]))
 async def ping_cmd(client, message: Message):
     start = time.time()
-    msg   = await message.reply_photo(IMG_PING, caption="⚡️  _Pinging…_")
+    msg   = await message.reply_photo(IMG_PING, caption=f"⚡  _{bold_italic('Pinging...')}_")
     ms    = (time.time() - start) * 1000
 
-    # Simple quality label
-    quality = "🟢  Excellent" if ms < 100 else ("🟡  Good" if ms < 300 else "🔴  Slow")
+    # Quality with colored indicators
+    if ms < 100:
+        quality = "🟢 Excellent"
+        bar = "▰▰▰▰▰▱▱▱▱▱"
+    elif ms < 300:
+        quality = "🟡 Good"
+        bar = "▰▰▰▱▱▱▱▱▱▱"
+    else:
+        quality = "🔴 Slow"
+        bar = "▰▱▱▱▱▱▱▱▱▱"
 
     text = (
-        "🏓  **System Stats**\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"⚡️  **Latency:**   `{ms:.1f} ms`  {quality}\n"
-        f"🔗  **API Node:**  Connected ✅\n"
-        f"📞  **PyTgCalls:** `v{pytgcalls.__version__}`  🟢\n"
-        f"🐍  **Python:**    `{sys.version.split()[0]}`\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "✦  **PAIN !!**  ·  _LᴇᴛMᴇ Sᴏʟᴏ Hᴇʀ_ 🥀"
+        f"🏓  {bold_sans('SYSTEM STATS')}\n"
+        f"{GLOW_LINE}\n"
+        f"\n"
+        f"  ⚡  {bold_sans('Latency')}   ─  `{ms:.1f} ms`\n"
+        f"      {bar}  {quality}\n"
+        f"\n"
+        f"  🔗  {bold_sans('API Node')}  ─  Connected ✅\n"
+        f"  📞  {bold_sans('PyTgCalls')} ─  `v{pytgcalls.__version__}` 🟢\n"
+        f"  🐍  {bold_sans('Python')}    ─  `{sys.version.split()[0]}`\n"
+        f"\n"
+        f"{THIN_LINE}\n"
+        f"{FOOTER}"
     )
     await msg.edit_caption(text)
 
@@ -115,9 +132,14 @@ async def reload_cmd(client, message: Message):
     await message.reply_photo(
         IMG_RELOAD,
         caption=(
-            "🔄  **Reloading engine…**\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "_All modules will be restarted. Takes ~3 seconds._"
+            f"🔄  {bold_sans('RELOADING ENGINE')}\n"
+            f"{GLOW_LINE}\n"
+            f"\n"
+            f"  _All modules will be restarted._\n"
+            f"  _Takes ~3 seconds._\n"
+            f"\n"
+            f"{THIN_LINE}\n"
+            f"{FOOTER}"
         ),
     )
     import subprocess
