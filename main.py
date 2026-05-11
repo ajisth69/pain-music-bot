@@ -30,22 +30,22 @@ async def main():
     try:
         print("Initializing Core Systems...")
         await start_web_server()
-    print("Initializing Core Systems...")
-    await bot.start()
-    print("Bot Started!")
-    
-    await userbot.start()
-    print("Userbot Started!")
-    
-    await call_py.start()
-    print("PyTgCalls Started!")
-    
-    print("PAIN !! Engine is Fully Operational.")
-    try:
-        await bot.send_message(LOGGER_ID, "🔥 **PAIN !! Engine is Fully Operational.**")
-    except Exception as e:
-        print(f"Logger Error: {e}")
-    await idle()
+        
+        await bot.start()
+        print("Bot Started!")
+        
+        await userbot.start()
+        print("Userbot Started!")
+        
+        await call_py.start()
+        print("PyTgCalls Started!")
+        
+        print("PAIN !! Engine is Fully Operational.")
+        try:
+            await bot.send_message(LOGGER_ID, "🔥 **PAIN !! Engine is Fully Operational.**")
+        except Exception as e:
+            print(f"Logger Error: {e}")
+        await idle()
     except Exception as e:
         print(f"CRITICAL ERROR AT STARTUP: {e}")
         import traceback
