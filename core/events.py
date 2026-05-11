@@ -35,13 +35,18 @@ async def stream_ended(client, update: Update):
         
     playing_chats.pop(chat_id, None)
     
-    # Check queue for the next song
-    next_song = get_next(chat_id)
-    if next_song:
+    while True:
+        next_song = get_next(chat_id)
+        if not next_song:
+            await call_py.leave_call(chat_id)
+            break
+            
         process_queue_downloads(chat_id)
+        file_path = None
+        
         try:
             file_path = next_song.get("file_path")
-            if not file_path:
+            if not file_path or not os.path.exists(file_path):
                 file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
                 os.makedirs("downloads", exist_ok=True)
                 downloaded = await download_file(next_song["audio_url"], file_path)
@@ -62,11 +67,21 @@ async def stream_ended(client, update: Update):
                         file_path = wav_path
                 except Exception:
                     pass
-                
+            
             await call_py.play(chat_id, MediaStream(file_path))
             
+            duration_min = f"{next_song['duration']//60}:{next_song['duration']%60:02d}"
             bar = create_progress_bar(0, next_song["duration"])
-            caption = f"🎵 **Playing:** {next_song['title']}\n\n{bar}"
+            caption = f"""> ▣ 𝐒ᴛᴀʀᴛᴇᴅ 𝐒ᴛʀᴇᴀᴍɪɴɢ 🎵 ❞
+>
+> ๏ 𝐓ɪᴛʟᴇ : {next_song['title']} ❞
+> ๏ 𝐀ʀᴛɪsᴛ : {next_song.get('artist', 'Unknown')}
+> ๏ 𝐃ᴜʀᴀᴛɪᴏɴ : {duration_min} ᴍɪɴᴜᴛᴇs
+> ๏ 𝐑ᴇǫᴜᴇsᴛᴇᴅ 𝐁ʏ : {next_song.get('requester', '𝐀ᴅᴍɪɴ')} !!
+>
+> {bar}
+>
+> ❖ ᴘᴏᴡᴇʀᴇᴅ» | 𝐋ᴇᴛ𝐌ᴇ 𝐒ᴏʟᴏ 𝐇ᴇʀ🥀 | ❞"""
             
             try:
                 player_msg = await client.send_photo(
@@ -94,9 +109,14 @@ async def stream_ended(client, update: Update):
                 "file_path": file_path
             }
             updater_tasks[chat_id] = asyncio.create_task(progress_updater(chat_id, player_msg))
+            break # Success, exit loop
+            
         except Exception as e:
-            print(f"Queue play error: {e}")
-            clear_queue(chat_id)
-            await call_py.leave_call(chat_id)
-    else:
-        await call_py.leave_call(chat_id)
+            print(f"Queue play error for {next_song.get('title')}: {e}")
+            if file_path and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except:
+                    pass
+            # Continue loop to try next song in queue
+

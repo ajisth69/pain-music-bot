@@ -22,7 +22,11 @@ async def play_command(client, message: Message):
     
     query = " ".join(message.command[1:])
     status_msg = await message.reply("🔍")
-    
+    try:
+        await message.delete()
+    except Exception:
+        pass
+        
     song = await fetch_song(query)
     if not song or not song["audio_url"]:
         return await status_msg.edit("❌")
