@@ -1,12 +1,13 @@
 import time
 import asyncio
+import os
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from pyrogram.errors import UserAlreadyParticipant
 from core.clients import userbot
 from core.player import call_py
 from pytgcalls.types import MediaStream
-from utils.jiosaavn import fetch_song, fetch_artist_songs
+from utils.jiosaavn import fetch_song, fetch_artist_songs, download_file
 from utils.queue import queued_songs, playing_chats, updater_tasks, add_to_queue
 from utils.formatters import create_progress_bar
 from utils.ui import get_player_markup
@@ -64,7 +65,14 @@ async def play_command(client, message: Message):
                 reply_markup=get_player_markup(chat_id)
             )
 
-        await call_py.play(chat_id, MediaStream(song["audio_url"]))
+        file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
+        os.makedirs("downloads", exist_ok=True)
+        
+        downloaded = await download_file(song["audio_url"], file_path)
+        if not downloaded:
+            return await status_msg.edit("❌ **Failed to download song.**")
+            
+        await call_py.play(chat_id, MediaStream(file_path))
         
         duration_min = f"{song['duration']//60}:{song['duration']%60:02d}"
         caption = f"""> ▣ 𝐒ᴛᴀʀᴛᴇᴅ 𝐒ᴛʀᴇᴀᴍɪɴɢ 🎵 ❞
@@ -95,7 +103,8 @@ async def play_command(client, message: Message):
             "requester": song["requester"],
             "paused": False,
             "audio_url": song["audio_url"],
-            "thumbnail": song["thumbnail"]
+            "thumbnail": song["thumbnail"],
+            "file_path": file_path
         }
         
         updater_tasks[chat_id] = asyncio.create_task(progress_updater(chat_id, player_msg))
@@ -138,7 +147,13 @@ async def singer_command(client, message: Message):
             if chat_id in playing_chats or i > 0:
                 add_to_queue(chat_id, song)
             else:
-                await call_py.play(chat_id, MediaStream(song["audio_url"]))
+                file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
+                os.makedirs("downloads", exist_ok=True)
+                downloaded = await download_file(song["audio_url"], file_path)
+                if not downloaded:
+                    continue
+                    
+                await call_py.play(chat_id, MediaStream(file_path))
                 
                 duration_min = f"{song['duration']//60}:{song['duration']%60:02d}"
                 caption = f"""> ▣ 𝐒ᴛᴀʀᴛᴇᴅ 𝐒ᴛʀᴇᴀᴍɪɴɢ 🎵 ❞
@@ -168,7 +183,8 @@ async def singer_command(client, message: Message):
                     "requester": song["requester"],
                     "paused": False,
                     "audio_url": song["audio_url"],
-                    "thumbnail": song["thumbnail"]
+                    "thumbnail": song["thumbnail"],
+                    "file_path": file_path
                 }
                 
                 updater_tasks[chat_id] = asyncio.create_task(progress_updater(chat_id, player_msg))

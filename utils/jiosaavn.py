@@ -109,3 +109,13 @@ async def fetch_artist_songs(query, limit=5):
             pass
         return []
 
+async def download_file(url, file_path):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            if resp.status == 200:
+                data = await resp.read()
+                with open(file_path, 'wb') as f:
+                    f.write(data)
+                return True
+    return False
+

@@ -36,6 +36,24 @@ async def help_cmd(client, message: Message):
 > ❖ ᴘᴏᴡᴇʀᴇᴅ» | 𝐋ᴇᴛ𝐌ᴇ 𝐒ᴏʟᴏ 𝐇ᴇʀ🥀 | ❞"""
     await message.reply_photo(IMG_HELP, caption=text, reply_markup=buttons)
 
+@Client.on_message(filters.command(["owner"]))
+async def owner_cmd(client, message: Message):
+    buttons = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✧ ꜱᴜᴘᴘᴏʀᴛ ✧", url=f"https://t.me/{OWNER_USERNAME}"),
+            InlineKeyboardButton("✧ ʙᴜɢꜱ ✧", url=f"https://t.me/{OWNER_USERNAME}")
+        ],
+        [InlineKeyboardButton("✧ ʟᴇᴛᴍᴇꜱᴏʟᴏ_ʜᴇʀ ✧", url="https://t.me/letmesolo_her")]
+    ])
+    text = f"""> ▣ **𝐎ᴡɴᴇʀ 𝐈ɴꜰᴏ** 👑 ❞
+>
+> ๏ **𝐒ᴜᴘᴘᴏʀᴛ :** 𝐂ᴏɴᴛᴀᴄᴛ @{OWNER_USERNAME} !!
+> ๏ **𝐁ᴜɢ𝐬 :** 𝐑ᴇᴘᴏʀᴛ 𝐓ᴏ @{OWNER_USERNAME} !!
+> ๏ **𝐋ᴇᴛ𝐌ᴇ𝐒ᴏʟᴏ𝐇ᴇʀ :** 𝐓ʜᴇ 𝐋ᴇɢᴇɴᴅ ❞
+>
+> ❖ ᴘᴏᴡᴇʀᴇᴅ» | 𝐋ᴇᴛ𝐌ᴇ 𝐒ᴏʟᴏ 𝐇ᴇʀ🥀 | ❞"""
+    await message.reply_photo(IMG_HELP, caption=text, reply_markup=buttons)
+
 @Client.on_message(filters.command(["ping"]))
 async def ping_cmd(client, message: Message):
     start = time.time()
