@@ -1,5 +1,6 @@
 import os
 import asyncio
+from utils.audio import prepare_audio
 from utils.jiosaavn import download_file
 
 queued_songs = {}
@@ -52,20 +53,7 @@ async def _download_song(chat_id, song_data):
     try:
         downloaded = await download_file(song_data["audio_url"], file_path)
         if downloaded:
-            wav_path = file_path.replace(".mp3", ".wav")
-            try:
-                process = await asyncio.create_subprocess_exec(
-                    "ffmpeg", "-i", file_path, "-ar", "48000", "-ac", "2", wav_path, "-y",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-                await process.communicate()
-                if process.returncode == 0:
-                    os.remove(file_path)
-                    file_path = wav_path
-            except Exception as e:
-                print(f"FFmpeg failed in background: {e}")
-                
+            file_path = await prepare_audio(file_path)
             song_data["file_path"] = file_path
     except asyncio.CancelledError:
         # Cleanup if cancelled

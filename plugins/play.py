@@ -9,6 +9,7 @@ from core.player import call_py
 from pytgcalls.types import MediaStream
 from utils.jiosaavn import fetch_song, fetch_artist_songs, download_file
 from utils.queue import queued_songs, playing_chats, updater_tasks, add_to_queue, process_queue_downloads
+from utils.audio import prepare_audio
 from utils.formatters import (
     create_progress_bar, make_now_playing_caption, make_queued_caption, format_time,
     GLOW_LINE, THIN_LINE, FOOTER
@@ -20,10 +21,9 @@ from config import OWNER_USERNAME
 
 
 # ── Shared helpers ──────────────────────────────────────────────────────────────
-PLAY_STATUS_SEARCHING = "🔍 ✨ 💨"
-PLAY_STATUS_DOWNLOADING = "📥 💫 💎"
-PLAY_STATUS_CONVERTING = "🔄 ⚙️ 🔮"
-PLAY_STATUS_CONNECTING = "📡 🌈 🎧"
+PLAY_STATUS_SEARCHING = "🔍"
+PLAY_STATUS_DOWNLOADING = "📥"
+PLAY_STATUS_CONNECTING = "📡"
 
 async def _join_vc(client, chat_id):
     """Ensure userbot is in the group."""
@@ -36,24 +36,6 @@ async def _join_vc(client, chat_id):
             await userbot.join_chat(link)
         except UserAlreadyParticipant:
             pass
-
-
-async def _convert_to_wav(mp3_path: str) -> str:
-    """Convert mp3 → wav (48 kHz stereo). Returns final usable path."""
-    wav_path = mp3_path.replace(".mp3", ".wav")
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "ffmpeg", "-i", mp3_path, "-ar", "48000", "-ac", "2", wav_path, "-y",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        await proc.communicate()
-        if proc.returncode == 0:
-            os.remove(mp3_path)
-            return wav_path
-    except Exception as e:
-        print(f"[play] FFmpeg failed: {e}")
-    return mp3_path
 
 
 async def _send_player(client_or_msg, chat_id, song, file_path, *, is_message=True):
@@ -137,8 +119,8 @@ async def play_command(client, message: Message):
         if not await download_file(song["audio_url"], file_path):
             return await status_msg.edit(f"❌  {bold_sans('Download failed.')}\n  _Try again._")
 
-        await status_msg.edit(PLAY_STATUS_CONVERTING)
-        file_path = await _convert_to_wav(file_path)
+        await status_msg.edit("✨")
+        file_path = await prepare_audio(file_path)
 
         await status_msg.edit(PLAY_STATUS_CONNECTING)
         player_msg = await _send_player(message, chat_id, song, file_path, is_message=True)
@@ -203,7 +185,7 @@ async def singer_command(client, message: Message):
                 if not await download_file(song["audio_url"], file_path):
                     continue
 
-                file_path  = await _convert_to_wav(file_path)
+                file_path  = await prepare_audio(file_path)
                 player_msg = await _send_player(message, chat_id, song, file_path, is_message=True)
 
                 if chat_id in updater_tasks:

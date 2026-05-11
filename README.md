@@ -6,12 +6,16 @@ A next-generation, ultra-fast, lag-free Telegram Music Bot built with **Pyrogram
 
 ## ✨ Features
 
-- ⚡️ **Lag-Free Streaming**: Songs are pre-downloaded and converted to WAV locally before playing to eliminate network stuttering and high CPU usage.
-- 🎨 **God-Level Aesthetic UI**: Beautifully formatted messages with custom fonts and smooth progress bars.
-- 🎵 **Music Search**: Search and stream millions of songs directly into voice chat.
-- 🎛 **Full VC Controls**: Interactive buttons for Play, Pause, Skip, and Stop.
-- 🚀 **Mini App Support**: Direct link to launch a mini app interface.
-- 🔄 **Auto-Queue System**: Plays the next song automatically when the current one ends.
+- ⚡️ **Stable Streaming**: Songs are pre-downloaded and converted to 48 kHz stereo PCM WAV before playback to reduce live-stream buffering.
+- 🎨 **Premium UI/UX**: 
+    - 𝖡𝗈𝗅𝖽 𝖲𝖺𝗇𝗌, *𝙄𝙩𝙖𝙡𝙞𝙘*, and sᴍᴀʟʟ ᴄᴀᴘꜱ fonts for all messages.
+    - ① ② ③ Circled numbering for the queue system.
+    - ▰▰▰▱▱▱ Sleek progress bars with glow separators.
+    - 🔍 Single animated status emoji for Telegram's native emoji animation.
+- 🎵 **Advanced Search**: High-speed search with branded results and rich metadata.
+- 🎛 **Interactive Controls**: 4-row button grid for Play, Pause, Skip, Stop, Replay, and more.
+- 🚀 **Mini App Support**: Integrated link to launch a beautiful mini app interface.
+- 🔄 **Smart Queue**: Automated playback with background pre-fetching.
 
 ---
 
@@ -19,7 +23,7 @@ A next-generation, ultra-fast, lag-free Telegram Music Bot built with **Pyrogram
 
 Before running the bot, ensure you have the following installed:
 - **Python 3.10** or higher
-- **FFmpeg**: Required for audio conversion and streaming.
+- **FFmpeg**: Required by the voice streaming stack.
 
 ---
 

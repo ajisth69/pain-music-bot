@@ -13,6 +13,7 @@ from utils.formatters import (
 from utils.fonts import bold_sans, bold_italic
 from utils.ui import get_player_markup
 from utils.updater import progress_updater
+from utils.audio import prepare_audio
 import os
 from utils.jiosaavn import download_file
 
@@ -42,19 +43,7 @@ async def _resolve_file(chat_id, next_song):
     os.makedirs("downloads", exist_ok=True)
     if not await download_file(next_song["audio_url"], fp):
         raise Exception(f"Download failed: {next_song['title']}")
-    wav = fp.replace(".mp3", ".wav")
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "ffmpeg", "-i", fp, "-ar", "48000", "-ac", "2", wav, "-y",
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-        )
-        await proc.communicate()
-        if proc.returncode == 0:
-            os.remove(fp)
-            fp = wav
-    except Exception as e:
-        print(f"[controls] FFmpeg failed: {e}")
-    return fp
+    return await prepare_audio(fp)
 
 
 async def _play_next_song(client, chat_id, next_song, requester_mention=None):

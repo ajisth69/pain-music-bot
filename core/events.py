@@ -11,6 +11,7 @@ from utils.formatters import (
 from utils.ui import get_player_markup
 from utils.updater import progress_updater
 from utils.jiosaavn import download_file
+from utils.audio import prepare_audio
 
 
 async def _wait_for_download(song_data, timeout=60):
@@ -38,19 +39,7 @@ async def _resolve_file(chat_id, next_song):
     os.makedirs("downloads", exist_ok=True)
     if not await download_file(next_song["audio_url"], fp):
         raise Exception(f"Download failed: {next_song['title']}")
-    wav = fp.replace(".mp3", ".wav")
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "ffmpeg", "-i", fp, "-ar", "48000", "-ac", "2", wav, "-y",
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-        )
-        await proc.communicate()
-        if proc.returncode == 0:
-            os.remove(fp)
-            fp = wav
-    except Exception as e:
-        print(f"[events] FFmpeg failed: {e}")
-    return fp
+    return await prepare_audio(fp)
 
 
 @call_py.on_update()
