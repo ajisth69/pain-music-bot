@@ -25,8 +25,11 @@ async def fetch_song_from_api(session, api_url):
                 image_url = images[-1].get("url") if images else IMG_DEFAULT
                 
                 # Try to get artist
-                artist = song.get("primaryArtists", "Unknown Artist")
-                if not artist and "singers" in song:
+                artists_data = song.get("artists", {})
+                primary_artists = artists_data.get("primary", [])
+                if primary_artists:
+                    artist = primary_artists[0].get("name", "Unknown Artist")
+                else:
                     artist = song.get("singers", "Unknown Artist")
                 
                 return {
@@ -86,8 +89,11 @@ async def fetch_artist_songs(query, limit=5):
                             images = song.get("image", [])
                             image_url = images[-1].get("url") if images else IMG_DEFAULT
                             
-                            artist = song.get("primaryArtists", "Unknown Artist")
-                            if not artist and "singers" in song:
+                            artists_data = song.get("artists", {})
+                            primary_artists = artists_data.get("primary", [])
+                            if primary_artists:
+                                artist = primary_artists[0].get("name", "Unknown Artist")
+                            else:
                                 artist = song.get("singers", "Unknown Artist")
                                 
                             if audio_url:
