@@ -3,7 +3,9 @@ import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import CallbackQuery
 from core.player import call_py
-from utils.queue import playing_chats, updater_tasks, get_next, clear_queue
+import os
+from utils.queue import playing_chats, updater_tasks, get_next, clear_queue, process_queue_downloads
+from utils.jiosaavn import download_file
 from utils.ui import get_player_markup
 from pytgcalls.types import MediaStream
 from utils.formatters import create_progress_bar
@@ -39,16 +41,61 @@ async def callbacks(client, query: CallbackQuery):
         elif action == "stop":
             clear_queue(chat_id)
             await call_py.leave_call(chat_id)
-            playing_chats.pop(chat_id, None)
+            
+            if chat_id in playing_chats:
+                file_path = playing_chats[chat_id].get("file_path")
+                if file_path and os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except Exception as e:
+                        print(f"Error deleting playing file on stop callback: {e}")
+                playing_chats.pop(chat_id)
+                
             if chat_id in updater_tasks:
                 updater_tasks[chat_id].cancel()
             await query.message.edit_caption(f"🛑 **Stream stopped by {query.from_user.mention}**")
             await query.answer("Stopped")
             
         elif action == "skip":
+            # Delete current song file
+            if chat_id in playing_chats:
+                file_path = playing_chats[chat_id].get("file_path")
+                if file_path and os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except Exception as e:
+                        print(f"Error deleting playing file on skip callback: {e}")
+                        
             next_song = get_next(chat_id)
             if next_song:
-                await call_py.play(chat_id, MediaStream(next_song["audio_url"]))
+                process_queue_downloads(chat_id)
+                
+                file_path = next_song.get("file_path")
+                if not file_path:
+                    file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
+                    os.makedirs("downloads", exist_ok=True)
+                    
+                    downloaded = await download_file(next_song["audio_url"], file_path)
+                    if not downloaded:
+                        return await query.answer("❌ Failed to download next song.", show_alert=True)
+                        
+                    # Try to convert
+                    wav_path = file_path.replace(".mp3", ".wav")
+                    try:
+                        process = await asyncio.create_subprocess_exec(
+                            "ffmpeg", "-i", file_path, "-ar", "48000", "-ac", "2", wav_path, "-y",
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE
+                        )
+                        await process.communicate()
+                        if process.returncode == 0:
+                            os.remove(file_path)
+                            file_path = wav_path
+                    except Exception:
+                        pass
+                        
+                await call_py.play(chat_id, MediaStream(file_path))
+                
                 if chat_id in updater_tasks:
                     updater_tasks[chat_id].cancel()
                 
@@ -80,7 +127,8 @@ async def callbacks(client, query: CallbackQuery):
                     "requester": next_song.get("requester", query.from_user.mention),
                     "paused": False,
                     "audio_url": next_song["audio_url"],
-                    "thumbnail": next_song["thumbnail"]
+                    "thumbnail": next_song["thumbnail"],
+                    "file_path": file_path
                 }
                 updater_tasks[chat_id] = asyncio.create_task(progress_updater(chat_id, player_msg))
                 await query.answer("Skipped")

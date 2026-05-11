@@ -8,7 +8,7 @@ from core.clients import userbot
 from core.player import call_py
 from pytgcalls.types import MediaStream
 from utils.jiosaavn import fetch_song, fetch_artist_songs, download_file
-from utils.queue import queued_songs, playing_chats, updater_tasks, add_to_queue
+from utils.queue import queued_songs, playing_chats, updater_tasks, add_to_queue, process_queue_downloads
 from utils.formatters import create_progress_bar
 from utils.ui import get_player_markup
 from utils.updater import progress_updater
@@ -48,7 +48,10 @@ async def play_command(client, message: Message):
                 return await status_msg.edit(f"❌")
 
         if chat_id in playing_chats:
-            add_to_queue(chat_id, song)
+            added = add_to_queue(chat_id, song)
+            if not added:
+                return await status_msg.edit("⚠️ **Queue is full (max 20 songs).**")
+            process_queue_downloads(chat_id)
             position = len(queued_songs[chat_id])
             duration_min = f"{song['duration']//60}:{song['duration']%60:02d}"
             await status_msg.delete()
@@ -170,7 +173,9 @@ async def singer_command(client, message: Message):
         for i, song in enumerate(songs):
             song["requester"] = message.from_user.mention
             if chat_id in playing_chats or i > 0:
-                add_to_queue(chat_id, song)
+                added = add_to_queue(chat_id, song)
+                if not added:
+                    break
             else:
                 file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
                 os.makedirs("downloads", exist_ok=True)
@@ -214,6 +219,7 @@ async def singer_command(client, message: Message):
                 
                 updater_tasks[chat_id] = asyncio.create_task(progress_updater(chat_id, player_msg))
                 
+        process_queue_downloads(chat_id)
         await asyncio.sleep(2)
         await status_msg.delete()
         

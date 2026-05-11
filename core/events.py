@@ -3,7 +3,7 @@ import asyncio
 import os
 from core.player import call_py
 from pytgcalls.types import MediaStream, Update, StreamEnded
-from utils.queue import playing_chats, updater_tasks, get_next, clear_queue
+from utils.queue import playing_chats, updater_tasks, get_next, clear_queue, process_queue_downloads
 from utils.formatters import create_progress_bar
 from utils.ui import get_player_markup
 from utils.updater import progress_updater
@@ -38,27 +38,30 @@ async def stream_ended(client, update: Update):
     # Check queue for the next song
     next_song = get_next(chat_id)
     if next_song:
+        process_queue_downloads(chat_id)
         try:
-            file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
-            os.makedirs("downloads", exist_ok=True)
-            downloaded = await download_file(next_song["audio_url"], file_path)
-            if not downloaded:
-                raise Exception("Failed to download song")
-                
-            wav_path = file_path.replace(".mp3", ".wav")
-            try:
-                import asyncio
-                process = await asyncio.create_subprocess_exec(
-                    "ffmpeg", "-i", file_path, "-ar", "48000", "-ac", "2", wav_path, "-y",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-                await process.communicate()
-                if process.returncode == 0:
-                    os.remove(file_path)
-                    file_path = wav_path
-            except Exception:
-                pass
+            file_path = next_song.get("file_path")
+            if not file_path:
+                file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
+                os.makedirs("downloads", exist_ok=True)
+                downloaded = await download_file(next_song["audio_url"], file_path)
+                if not downloaded:
+                    raise Exception("Failed to download song")
+                    
+                wav_path = file_path.replace(".mp3", ".wav")
+                try:
+                    import asyncio
+                    process = await asyncio.create_subprocess_exec(
+                        "ffmpeg", "-i", file_path, "-ar", "48000", "-ac", "2", wav_path, "-y",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    await process.communicate()
+                    if process.returncode == 0:
+                        os.remove(file_path)
+                        file_path = wav_path
+                except Exception:
+                    pass
                 
             await call_py.play(chat_id, MediaStream(file_path))
             
@@ -66,7 +69,7 @@ async def stream_ended(client, update: Update):
             caption = f"🎵 **Playing:** {next_song['title']}\n\n{bar}"
             
             try:
-                player_msg = await bot.send_photo(
+                player_msg = await client.send_photo(
                     chat_id,
                     photo=next_song["thumbnail"],
                     caption=caption,
@@ -74,7 +77,7 @@ async def stream_ended(client, update: Update):
                 )
             except Exception as e:
                 print(f"Failed to send photo in queue, sending text: {e}")
-                player_msg = await bot.send_message(
+                player_msg = await client.send_message(
                     chat_id,
                     text=caption,
                     reply_markup=get_player_markup(chat_id)

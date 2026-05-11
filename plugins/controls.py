@@ -3,7 +3,7 @@ import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from core.player import call_py
-from utils.queue import playing_chats, updater_tasks, get_next, clear_queue
+from utils.queue import playing_chats, updater_tasks, get_next, clear_queue, process_queue_downloads
 from pytgcalls.types import MediaStream
 from utils.formatters import create_progress_bar
 from utils.ui import get_player_markup
@@ -51,7 +51,16 @@ async def stop_cmd(client, message: Message):
         
     clear_queue(chat_id)
     await call_py.leave_call(chat_id)
-    playing_chats.pop(chat_id, None)
+    
+    if chat_id in playing_chats:
+        file_path = playing_chats[chat_id].get("file_path")
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                print(f"Error deleting playing file on stop: {e}")
+        playing_chats.pop(chat_id)
+        
     if chat_id in updater_tasks:
         updater_tasks[chat_id].cancel()
     await message.reply(f"> ▣ **𝐒ᴛᴏᴘᴘᴇᴅ 𝐁ʏ :** {message.from_user.mention} ❞")
@@ -62,29 +71,42 @@ async def skip_cmd(client, message: Message):
     if chat_id not in playing_chats:
         return await message.reply("⚠️ No active stream found.")
         
+    # Delete current song file
+    if chat_id in playing_chats:
+        file_path = playing_chats[chat_id].get("file_path")
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                print(f"Error deleting playing file on skip: {e}")
+                
     next_song = get_next(chat_id)
     if next_song:
-        file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
-        os.makedirs("downloads", exist_ok=True)
+        process_queue_downloads(chat_id)
         
-        downloaded = await download_file(next_song["audio_url"], file_path)
-        if not downloaded:
-            return await message.reply("❌ **Failed to download next song.**")
+        file_path = next_song.get("file_path")
+        if not file_path:
+            file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
+            os.makedirs("downloads", exist_ok=True)
             
-        wav_path = file_path.replace(".mp3", ".wav")
-        try:
-            process = await asyncio.create_subprocess_exec(
-                "ffmpeg", "-i", file_path, "-ar", "48000", "-ac", "2", wav_path, "-y",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            await process.communicate()
-            if process.returncode == 0:
-                os.remove(file_path)
-                file_path = wav_path
-        except Exception:
-            pass
-            
+            downloaded = await download_file(next_song["audio_url"], file_path)
+            if not downloaded:
+                return await message.reply("❌ **Failed to download next song.**")
+                
+            wav_path = file_path.replace(".mp3", ".wav")
+            try:
+                process = await asyncio.create_subprocess_exec(
+                    "ffmpeg", "-i", file_path, "-ar", "48000", "-ac", "2", wav_path, "-y",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                await process.communicate()
+                if process.returncode == 0:
+                    os.remove(file_path)
+                    file_path = wav_path
+            except Exception:
+                pass
+                
         await call_py.play(chat_id, MediaStream(file_path))
         
         if chat_id in updater_tasks:
