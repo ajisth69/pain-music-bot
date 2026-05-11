@@ -3,6 +3,13 @@ import pyrogram.errors
 from aiohttp import web
 import os
 
+# Create and set event loop before importing Pyrogram to fix Python 3.12+ issue
+try:
+    loop = asyncio.get_event_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
 # Monkey patch missing error for pytgcalls compatibility
 if not hasattr(pyrogram.errors, 'GroupcallForbidden'):
     class GroupcallForbidden(Exception): pass
