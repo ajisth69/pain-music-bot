@@ -47,12 +47,13 @@ async def stream_ended(client, update: Update):
                 
             wav_path = file_path.replace(".mp3", ".wav")
             try:
-                import subprocess
-                process = subprocess.run(
-                    ["ffmpeg", "-i", file_path, "-ar", "48000", "-ac", "2", wav_path, "-y"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
+                import asyncio
+                process = await asyncio.create_subprocess_exec(
+                    "ffmpeg", "-i", file_path, "-ar", "48000", "-ac", "2", wav_path, "-y",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
                 )
+                await process.communicate()
                 if process.returncode == 0:
                     os.remove(file_path)
                     file_path = wav_path
