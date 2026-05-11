@@ -1,38 +1,53 @@
 import time
 import asyncio
-from pyrogram.errors import MessageNotModified
-from utils.queue import playing_chats
-from utils.formatters import create_progress_bar
+from pyrogram.errors import MessageNotModified, FloodWait
+from utils.queue import playing_chats, updater_tasks
+from utils.formatters import create_progress_bar, make_now_playing_caption
 from utils.ui import get_player_markup
 
+
 async def progress_updater(chat_id, message):
-    while chat_id in playing_chats:
-        try:
+    """Periodically edits the now-playing message with a live progress bar."""
+    try:
+        while True:
+            if chat_id not in playing_chats:
+                break
+
             chat_data = playing_chats[chat_id]
+
+            # Stop if the active message changed (song was skipped)
+            if chat_data.get("message") is not message:
+                break
+
             if not chat_data["paused"]:
                 current_time = int(time.time())
                 played_seconds = current_time - chat_data["start_time"]
-                if played_seconds >= chat_data["duration"]:
+                duration = chat_data["duration"]
+                played_seconds = max(0, min(played_seconds, duration))
+
+                bar = create_progress_bar(played_seconds, duration)
+                caption = make_now_playing_caption(chat_data, bar)
+
+                try:
+                    await message.edit_caption(
+                        caption=caption,
+                        reply_markup=get_player_markup(chat_id),
+                    )
+                except MessageNotModified:
+                    pass
+                except FloodWait as e:
+                    await asyncio.sleep(e.value)
+                    continue
+                except Exception as e:
+                    print(f"[updater] Edit failed for {chat_id}: {e}")
                     break
-                duration_min = f"{chat_data['duration']//60}:{chat_data['duration']%60:02d}"
-                bar = create_progress_bar(played_seconds, chat_data["duration"])
-                caption = f"""> ▣ 𝐒ᴛᴀʀᴛᴇᴅ 𝐒ᴛʀᴇᴀᴍɪɴɢ 🎵 ❞
->
-> ๏ 𝐓ɪᴛʟᴇ : {chat_data['title']} ❞
-> ๏ 𝐀ʀᴛɪsᴛ : {chat_data.get('artist', 'Unknown')}
-> ๏ 𝐃ᴜʀᴀᴛɪᴏɴ : {duration_min} ᴍɪɴᴜᴛᴇs
-> ๏ 𝐑ᴇǫᴜᴇsᴛᴇᴅ 𝐁ʏ : {chat_data.get('requester', '𝐀ᴅᴍɪɴ')} !!
->
-> {bar}
->
-> ❖ ᴘᴏᴡᴇʀᴇᴅ» | 𝐋ᴇᴛ𝐌ᴇ 𝐒ᴏʟᴏ 𝐇ᴇʀ🥀 | ❞"""
-                await message.edit_caption(
-                    caption=caption,
-                    reply_markup=get_player_markup(chat_id)
-                )
+
             await asyncio.sleep(10)
-        except MessageNotModified:
-            await asyncio.sleep(10)
-        except Exception as e:
-            print(f"Updater Error for {chat_id}: {e}")
-            break
+
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        print(f"[updater] Unexpected error for {chat_id}: {e}")
+    finally:
+        if updater_tasks.get(chat_id) is asyncio.current_task():
+            updater_tasks.pop(chat_id, None)
