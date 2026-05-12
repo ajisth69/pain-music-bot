@@ -4,45 +4,18 @@ from pyrogram import Client, filters
 from pyrogram.types import CallbackQuery
 from core.player import call_py
 import os
-from utils.queue import playing_chats, queued_songs, updater_tasks, get_next, clear_queue, process_queue_downloads
-from utils.jiosaavn import download_file
+from utils.queue import (
+    playing_chats, queued_songs, updater_tasks, get_next, clear_queue,
+    process_queue_downloads, resolve_song_file,
+)
 from utils.ui import get_player_markup
-from pytgcalls.types import MediaStream
+from utils.audio import is_ready_audio_source, make_audio_stream
 from utils.formatters import (
     create_progress_bar, make_now_playing_caption, format_time,
     make_stopped_caption, make_skipped_caption, make_queue_list,
 )
 from utils.fonts import bold_sans
 from utils.updater import progress_updater
-from utils.audio import prepare_audio
-
-
-async def _wait_for_download(song_data, timeout=60):
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        fp = song_data.get("file_path")
-        if fp and os.path.exists(fp) and os.path.getsize(fp) > 0:
-            return fp
-        if not song_data.get("downloading"):
-            return None
-        await asyncio.sleep(0.5)
-    return None
-
-
-async def _resolve_file(chat_id, next_song):
-    fp = next_song.get("file_path")
-    if fp and os.path.exists(fp) and os.path.getsize(fp) > 0:
-        return fp
-    if next_song.get("downloading"):
-        fp = await _wait_for_download(next_song, timeout=60)
-        if not fp:
-            raise Exception(f"Download timed out: {next_song['title']}")
-        return fp
-    fp = f"downloads/{chat_id}_{int(time.time())}_{id(next_song)}.mp3"
-    os.makedirs("downloads", exist_ok=True)
-    if not await download_file(next_song["audio_url"], fp):
-        raise Exception(f"Download failed: {next_song['title']}")
-    return await prepare_audio(fp)
 
 
 @Client.on_callback_query(filters.regex(r"^(pause_resume|skip|stop|queue_info|back_player|replay|close_panel)\|"))
@@ -93,9 +66,9 @@ async def callbacks(client, query: CallbackQuery):
             return await query.answer("⚠️  No active stream.", show_alert=True)
         data = playing_chats[chat_id]
         fp = data.get("file_path")
-        if fp and os.path.exists(fp):
+        if is_ready_audio_source(fp):
             try:
-                await call_py.play(chat_id, MediaStream(fp))
+                await call_py.play(chat_id, make_audio_stream(fp))
                 data["start_time"] = int(time.time())
                 data["paused"] = False
                 await query.answer("🔄 Replaying!")
@@ -176,12 +149,12 @@ async def callbacks(client, query: CallbackQuery):
 
             process_queue_downloads(chat_id)
             try:
-                file_path = await _resolve_file(chat_id, next_song)
+                file_path = await resolve_song_file(chat_id, next_song)
             except Exception as e:
                 await query.answer(f"❌ {e}", show_alert=True)
                 return
 
-            await call_py.play(chat_id, MediaStream(file_path))
+            await call_py.play(chat_id, make_audio_stream(file_path))
             bar     = create_progress_bar(0, next_song["duration"])
             caption = make_now_playing_caption(next_song, bar)
             markup  = get_player_markup(chat_id)

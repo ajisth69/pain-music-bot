@@ -1,15 +1,16 @@
 import time
 import asyncio
-import os
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from pyrogram.errors import UserAlreadyParticipant
 from core.clients import userbot
 from core.player import call_py
-from pytgcalls.types import MediaStream
-from utils.jiosaavn import fetch_song, fetch_artist_songs, download_file
-from utils.queue import queued_songs, playing_chats, updater_tasks, add_to_queue, process_queue_downloads
-from utils.audio import prepare_audio
+from utils.jiosaavn import fetch_song, fetch_artist_songs
+from utils.queue import (
+    queued_songs, playing_chats, updater_tasks, add_to_queue,
+    process_queue_downloads, resolve_song_file,
+)
+from utils.audio import make_audio_stream, should_stream_direct
 from utils.formatters import (
     create_progress_bar, make_now_playing_caption, make_queued_caption, format_time,
     GLOW_LINE, THIN_LINE, FOOTER
@@ -40,7 +41,7 @@ async def _join_vc(client, chat_id):
 
 async def _send_player(client_or_msg, chat_id, song, file_path, *, is_message=True):
     """Stream the song and send the now-playing card. Returns player_msg."""
-    await call_py.play(chat_id, MediaStream(file_path))
+    await call_py.play(chat_id, make_audio_stream(file_path))
 
     bar = create_progress_bar(0, song["duration"])
     caption = make_now_playing_caption(song, bar)
@@ -112,15 +113,12 @@ async def play_command(client, message: Message):
             )
 
         # ── Nothing playing → start now ────────────────────────────────────────
-        await status_msg.edit(PLAY_STATUS_DOWNLOADING)
-        file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
-        os.makedirs("downloads", exist_ok=True)
+        if should_stream_direct(song.get("duration")):
+            await status_msg.edit(PLAY_STATUS_CONNECTING)
+        else:
+            await status_msg.edit(PLAY_STATUS_DOWNLOADING)
 
-        if not await download_file(song["audio_url"], file_path):
-            return await status_msg.edit(f"❌  {bold_sans('Download failed.')}\n  _Try again._")
-
-        await status_msg.edit("✨")
-        file_path = await prepare_audio(file_path)
+        file_path = await resolve_song_file(chat_id, song)
 
         await status_msg.edit(PLAY_STATUS_CONNECTING)
         player_msg = await _send_player(message, chat_id, song, file_path, is_message=True)
@@ -180,12 +178,7 @@ async def singer_command(client, message: Message):
             if chat_id in playing_chats or i > 0:
                 add_to_queue(chat_id, song)
             else:
-                file_path = f"downloads/{chat_id}_{int(time.time())}.mp3"
-                os.makedirs("downloads", exist_ok=True)
-                if not await download_file(song["audio_url"], file_path):
-                    continue
-
-                file_path  = await prepare_audio(file_path)
+                file_path = await resolve_song_file(chat_id, song)
                 player_msg = await _send_player(message, chat_id, song, file_path, is_message=True)
 
                 if chat_id in updater_tasks:

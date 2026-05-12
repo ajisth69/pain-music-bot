@@ -3,8 +3,11 @@ import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from core.player import call_py
-from utils.queue import playing_chats, queued_songs, updater_tasks, get_next, clear_queue, process_queue_downloads
-from pytgcalls.types import MediaStream
+from utils.queue import (
+    playing_chats, queued_songs, updater_tasks, get_next, clear_queue,
+    process_queue_downloads, resolve_song_file,
+)
+from utils.audio import make_audio_stream
 from utils.formatters import (
     create_progress_bar, make_now_playing_caption, format_time,
     make_queue_list, make_stopped_caption, make_skipped_caption,
@@ -13,44 +16,14 @@ from utils.formatters import (
 from utils.fonts import bold_sans, bold_italic
 from utils.ui import get_player_markup
 from utils.updater import progress_updater
-from utils.audio import prepare_audio
 import os
-from utils.jiosaavn import download_file
-
-
-async def _wait_for_download(song_data, timeout=60):
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        fp = song_data.get("file_path")
-        if fp and os.path.exists(fp) and os.path.getsize(fp) > 0:
-            return fp
-        if not song_data.get("downloading"):
-            return None
-        await asyncio.sleep(0.5)
-    return None
-
-
-async def _resolve_file(chat_id, next_song):
-    fp = next_song.get("file_path")
-    if fp and os.path.exists(fp) and os.path.getsize(fp) > 0:
-        return fp
-    if next_song.get("downloading"):
-        fp = await _wait_for_download(next_song, timeout=60)
-        if not fp:
-            raise Exception(f"Download timed out: {next_song['title']}")
-        return fp
-    fp = f"downloads/{chat_id}_{int(time.time())}_{id(next_song)}.mp3"
-    os.makedirs("downloads", exist_ok=True)
-    if not await download_file(next_song["audio_url"], fp):
-        raise Exception(f"Download failed: {next_song['title']}")
-    return await prepare_audio(fp)
 
 
 async def _play_next_song(client, chat_id, next_song, requester_mention=None):
     """Resolve file, play it, send the player card, update state."""
     process_queue_downloads(chat_id)
-    file_path = await _resolve_file(chat_id, next_song)
-    await call_py.play(chat_id, MediaStream(file_path))
+    file_path = await resolve_song_file(chat_id, next_song)
+    await call_py.play(chat_id, make_audio_stream(file_path))
 
     bar     = create_progress_bar(0, next_song["duration"])
     caption = make_now_playing_caption(next_song, bar)
