@@ -2,7 +2,7 @@ import time
 import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from pyrogram.errors import UserAlreadyParticipant
+from pyrogram.errors import UserAlreadyParticipant, MessageNotModified
 from core.clients import userbot
 from core.player import call_py
 from utils.jiosaavn import fetch_song, fetch_artist_songs
@@ -114,13 +114,17 @@ async def play_command(client, message: Message):
 
         # ── Nothing playing → start now ────────────────────────────────────────
         if should_stream_direct(song.get("duration")):
+            # Long track: skip download step entirely, jump straight to connecting
             await status_msg.edit(PLAY_STATUS_CONNECTING)
+            file_path = await resolve_song_file(chat_id, song)
+            # Status is already PLAY_STATUS_CONNECTING — no duplicate edit needed
         else:
             await status_msg.edit(PLAY_STATUS_DOWNLOADING)
-
-        file_path = await resolve_song_file(chat_id, song)
-
-        await status_msg.edit(PLAY_STATUS_CONNECTING)
+            file_path = await resolve_song_file(chat_id, song)
+            try:
+                await status_msg.edit(PLAY_STATUS_CONNECTING)
+            except MessageNotModified:
+                pass
         player_msg = await _send_player(message, chat_id, song, file_path, is_message=True)
         await status_msg.delete()
 
@@ -141,8 +145,14 @@ async def play_command(client, message: Message):
         }
         updater_tasks[chat_id] = asyncio.create_task(progress_updater(chat_id, player_msg))
 
+    except MessageNotModified:
+        pass  # silent — not a real failure
     except Exception as e:
-        await status_msg.edit(f"❌  {bold_sans('Stream failed:')}\n`{e}`")
+        print(f"[play] play_command error: {e}")
+        try:
+            await status_msg.edit(f"❌  {bold_sans('Stream failed:')}\n`{e}`")
+        except Exception:
+            pass
 
 
 # ── /singer ─────────────────────────────────────────────────────────────────────
@@ -206,5 +216,11 @@ async def singer_command(client, message: Message):
             f"  📋  Queue: `{q_count}` song{'s' if q_count != 1 else ''} ahead."
         )
 
+    except MessageNotModified:
+        pass  # silent — not a real failure
     except Exception as e:
-        await status_msg.edit(f"❌  {bold_sans('Failed:')}\n`{e}`")
+        print(f"[play] singer_command error: {e}")
+        try:
+            await status_msg.edit(f"❌  {bold_sans('Failed:')}\n`{e}`")
+        except Exception:
+            pass
